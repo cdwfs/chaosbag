@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Chaos Bag Odds</title>
+    <meta charset="utf-8"/>
+    <link rel="apple-touch-icon" sizes="180x180" href="images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="images/favicon-16x16.png">
+    <link rel="manifest" href="/manifest.json">
+    <style type="text/css" media="screen">
+    @font-face {
+      font-family: arkham-icons;
+      src: url("fonts/arkham-icons.otf") format("opentype")
+    }
+    [class^="icon-"],[class*=" icon-"]
+    {
+      font-family:'arkham-icons';
+      speak:none;
+      font-style:normal;
+      font-weight:normal;
+      font-variant:normal;
+      text-transform:none;
+      line-height:1;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale
+    }
+    .icon-elder-sign::before {content:"o"; }
+    .icon-elder-sign { color:#C80C0C; }
+    .icon-tablet::before {content:"q"}
+    .icon-tablet { color:#0000C0; }
+    .icon-cultist::before {content:"l"}
+    .icon-cultist { color:#008000; }
+    .icon-elder-thing::before {content:"n"}
+    .icon-elder-thing { color:#C80C0C; }
+    .icon-skull::before {content:"k"}
+    .icon-skull { color:#600000; }
+    .icon-auto-fail::before {content:"m"}
+    .icon-auto-fail { color:#C00000; }
+    </style>
+  </head>
+  <body>
+
+    <script>
+    var ChaosBag = function() {
+      "use strict";
+      const DEFAULT_TOKEN_MODIFIERS = {
+        "ES":+1,
+        "SK":0,
+        "TA":0,
+        "CU":0,
+        "EL":0,
+        "WI":-9,
+        "+1":+1,
+        "+0":+0,
+        "-1":-1,
+        "-2":-2,
+        "-3":-3,
+        "-4":-4,
+        "-5":-5,
+        "-6":-6,
+        "-7":-7,
+        "-8":-8,
+      };
+
+      let m_tokens = {
+        "ES":{ mod:+1, shortName: "ES", id:"elder-sign", name:"Elder Sign" },
+        "SK":{ mod:-1, shortName: "SK", id:"skull", name:"Skull" },
+        "TA":{ mod:-1, shortName: "TA", id:"tablet", name:"Tablet" },
+        "CU":{ mod:-1, shortName: "CU", id:"cultist", name:"Cultist" },
+        "EL":{ mod:-1, shortName: "EL", id:"elder-thing", name:"Elder Thing" },
+        "WI":{ mod:-9, shortName: "WI", id:"auto-fail", name:"Mister Wiggly" },
+        "+1":{ mod:+1, shortName: "+1", id:"plus1", name:"+1" },
+        "+0":{ mod:+0, shortName: "+0", id:"zero", name:"0" },
+        "-1":{ mod:-1, shortName: "-1", id:"minus1", name:"-1" },
+        "-2":{ mod:-2, shortName: "-2", id:"minus2", name:"-2" },
+        "-3":{ mod:-3, shortName: "-3", id:"minus3", name:"-3" },
+        "-4":{ mod:-4, shortName: "-4", id:"minus4", name:"-4" },
+        "-5":{ mod:-5, shortName: "-5", id:"minus5", name:"-5" },
+        "-6":{ mod:-6, shortName: "-6", id:"minus6", name:"-6" },
+        "-7":{ mod:-7, shortName: "-7", id:"minus7", name:"-7" },
+        "-8":{ mod:-8, shortName: "-8", id:"minus8", name:"-8" },
+      };
+      let m_bag = [];
+
+      let imageForToken = (token,size) => "<img src=\"images/token-" + token.id + ".png\" alt=\"" + token.name + "\" width=\""+size+"\" height=\""+size+"\"/>";
+
+      let init = function() {
+        let table = "<table><tr>\n";
+        Object.values(m_tokens).forEach(token => {
+          table += "<td>" + imageForToken(token, 64) + "</td>\n";
+        });
+        table += "</tr><tr>\n";
+        Object.values(m_tokens).forEach(token => {
+          table += "<td>\n";
+          table += "<input type=\"button\" value=\"Add\" onclick=\"ChaosBag.addToken('" + token.shortName + "')\"><br>\n";
+          table += "<input type=\"button\" value=\"Remove\" onclick=\"ChaosBag.removeToken('" + token.shortName + "')\"><br>\n";
+          table += "<input type=\"number\" id=\"" + token.id + "-mod\" style=\"width: 2.5em\" value=\"" + token.mod + "\" min=\"-9\" max=\"+9\" onchange=\"ChaosBag.refresh()\"><label for=\"" + token.id + "-mod\"/>Mod</label>\n";
+          table += "</td>\n";
+        });
+        table += "</tr><table>";
+        document.querySelector("#tokenUI").innerHTML = table;
+      }
+      
+      let refresh = function() {
+        // Update token modifiers
+        Object.values(m_tokens).forEach(t => {
+          let inputElem = document.getElementById(t.id + "-mod");
+          if (inputElem != null) {
+            t.mod = parseInt(inputElem.value);
+          }
+        });
+        // Build modifier -> tokens lookup, with each bucket sorted by token
+        let tokensByValue = {};
+        m_bag.forEach(token => {
+          let mod = m_tokens[token].mod;
+          if (tokensByValue[mod] == null) {
+            tokensByValue[mod] = [token];
+          } else {
+            tokensByValue[mod].push(token);
+          }
+        });
+        Object.keys(tokensByValue).forEach(m => tokensByValue[m].sort());
+        let uniqueMods = Object.keys(tokensByValue).map(m => parseInt(m)).sort((l,r) => {
+          if (l < r) return -1;
+          if (l > r) return 1;
+          return 0;
+        });
+        // one column per unique modifier
+        var table = "<table border=2>\n"
+        table += "<tr>";
+        uniqueMods.forEach(m => {
+          table += "<th>" + (m>0 ? "+" : "") + m + "</th>\n";
+        });
+        table += "</tr><tr>";
+        uniqueMods.forEach(m => {
+          table += "<td valign=top>";
+          tokensByValue[m].forEach(token => {
+            table += imageForToken(m_tokens[token],48) + "<br>\n";
+        });
+        table += "</td>\n";
+        });
+        table += "</tr></table>";
+        document.querySelector("#bagContents").innerHTML = table;
+      }
+
+      return {
+        addToken: function(token) {
+          m_bag.push(token);          
+          refresh();
+        },
+        removeToken: function(token) {
+          let tokenIndex = m_bag.indexOf(token)
+          if (tokenIndex != -1) {
+            m_bag.splice(tokenIndex, 1);
+            refresh();
+          }
+        },
+        init: init,
+        refresh: refresh,
+      };
+    }();
+    window.onload = function() {
+      ChaosBag.init();
+      ChaosBag.refresh();
+    };
+    </script>
+    <!-- token UI -->
+    <div id="tokenUI"/>Script not run (is JavaScript allowed to run? Check the console!)</div>
+    <!-- bag contents -->
+    <div id="bagContents"/>Script not run (is JavaScript allowed to run? Check the console!)</div>
+  </body>
+</html>
