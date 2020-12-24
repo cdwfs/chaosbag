@@ -128,8 +128,10 @@
             t.mod = parseInt(inputElem.value);
           }
         });
-        if (m_bag.length == 0)
+        if (m_bag.length == 0) {
+          document.querySelector("#bagContents").innerHTML = "";
           return; // nothing to display
+        }
         
         // Build modifier -> tokens lookup, with each bucket sorted by token
         let tokensByValue = {};
