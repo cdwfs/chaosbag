@@ -45,10 +45,10 @@
       "use strict";
       const DEFAULT_TOKEN_MODIFIERS = {
         "ES":+1,
-        "SK":0,
-        "TA":0,
-        "CU":0,
-        "EL":0,
+        "SK":-2,
+        "TA":-3,
+        "CU":-1,
+        "EL":-3,
         "WI":-9,
         "+1":+1,
         "+0":+0,
@@ -64,11 +64,10 @@
 
       let m_tokens = {
         "ES":{ mod:+1, shortName: "ES", id:"elder-sign", name:"Elder Sign" },
-        "SK":{ mod:-1, shortName: "SK", id:"skull", name:"Skull" },
-        "TA":{ mod:-1, shortName: "TA", id:"tablet", name:"Tablet" },
+        "SK":{ mod:-2, shortName: "SK", id:"skull", name:"Skull" },
+        "TA":{ mod:-3, shortName: "TA", id:"tablet", name:"Tablet" },
         "CU":{ mod:-1, shortName: "CU", id:"cultist", name:"Cultist" },
-        "EL":{ mod:-1, shortName: "EL", id:"elder-thing", name:"Elder Thing" },
-        "WI":{ mod:-9, shortName: "WI", id:"auto-fail", name:"Mister Wiggly" },
+        "EL":{ mod:-3, shortName: "EL", id:"elder-thing", name:"Elder Thing" },
         "+1":{ mod:+1, shortName: "+1", id:"plus1", name:"+1" },
         "+0":{ mod:+0, shortName: "+0", id:"zero", name:"0" },
         "-1":{ mod:-1, shortName: "-1", id:"minus1", name:"-1" },
@@ -79,6 +78,7 @@
         "-6":{ mod:-6, shortName: "-6", id:"minus6", name:"-6" },
         "-7":{ mod:-7, shortName: "-7", id:"minus7", name:"-7" },
         "-8":{ mod:-8, shortName: "-8", id:"minus8", name:"-8" },
+        "WI":{ mod:-9, shortName: "WI", id:"auto-fail", name:"Mister Wiggly" },
       };
       let m_bag = [];
 
