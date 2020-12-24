@@ -124,22 +124,39 @@
           if (l < r) return -1;
           if (l > r) return 1;
           return 0;
-        });
-        // one column per unique modifier
-        var table = "<table border=2>\n"
-        table += "<tr>";
+        }).reverse();
+        let table = "<table border=2>\n"
+        // headers
+        let columns = ["Mod", "==", ">=", "<=", "Tokens"];
+        table += "<tr>\n";
+        columns.forEach(c => table += "<th>"+c+"</th>\n");
+        table += "</tr>\n";
+        // rows
+        let aboveCount = 0;
+        let totalCount = m_bag.length;
         uniqueMods.forEach(m => {
-          table += "<th>" + (m>0 ? "+" : "") + m + "</th>\n";
+          table += "<tr>\n";
+          // Mod
+          table += "<td>" + (m>0 ? "+" : "") + m + "</td>\n";
+          // ==
+          let bucketCount = tokensByValue[m].length;
+          let equalPercent = 100.0 * bucketCount / totalCount;
+          table += "<td>" + equalPercent.toFixed(0) + "%</td>\n";
+          // >=
+          let gteCount = 100.0 * (bucketCount + aboveCount) / totalCount;
+          table += "<td>" + gteCount.toFixed(0) + "%</td>\n";
+          // <=
+          let lteCount = 100.0 * (totalCount - aboveCount) / totalCount;
+          table += "<td>" + lteCount.toFixed(0) + "%</td>\n";
+          aboveCount += bucketCount;
+          // Tokens
+          table += "<td>";
+          tokensByValue[m].forEach(token => table += imageForToken(m_tokens[token],48));
+          table += "</td>\n";
+          
+          table += "</tr>\n";
         });
-        table += "</tr><tr>";
-        uniqueMods.forEach(m => {
-          table += "<td valign=top>";
-          tokensByValue[m].forEach(token => {
-            table += imageForToken(m_tokens[token],48) + "<br>\n";
-        });
-        table += "</td>\n";
-        });
-        table += "</tr></table>";
+        table += "</table>";
         document.querySelector("#bagContents").innerHTML = table;
       }
 
