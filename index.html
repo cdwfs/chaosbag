@@ -25,17 +25,20 @@
       -moz-osx-font-smoothing:grayscale
     }
     .icon-elder-sign::before {content:"o"; }
-    .icon-elder-sign { color:#C80C0C; }
+    .icon-elder-sign { color:#008080; }
     .icon-tablet::before {content:"q"}
     .icon-tablet { color:#0000C0; }
     .icon-cultist::before {content:"l"}
     .icon-cultist { color:#008000; }
     .icon-elder-thing::before {content:"n"}
-    .icon-elder-thing { color:#C80C0C; }
+    .icon-elder-thing { color:#800080; }
     .icon-skull::before {content:"k"}
     .icon-skull { color:#600000; }
     .icon-auto-fail::before {content:"m"}
     .icon-auto-fail { color:#C00000; }
+    span.high-percent { font-weight: bold; color:#008000; }
+    span.mid-percent { font-weight: bold; color:#000000; }
+    span.low-percent { font-weight: bold; color:#800000; }
     </style>
   </head>
   <body>
@@ -82,33 +85,52 @@
       };
       let m_bag = [];
 
-      let imageForToken = (token,size) => "<img src=\"images/token-" + token.id + ".png\" alt=\"" + token.name + "\" width=\""+size+"\" height=\""+size+"\"/>";
+      let imageForToken = (token,size) => `<img src="images/token-${token.id}.png" alt="${token.name}" width="${size}" height="${size}"/>`;
 
+      let iconForTokenId = (tokenId) => `"<span class="icon-${tokenId}"></span>`;
+
+      let asPercent = function(p) {
+        let percentClass = "mid-percent";
+        if (p >= 80) {
+          percentClass = "high-percent";
+        } else if (p < 50) {
+          percentClass = "low-percent";
+        }
+        return `<span class="${percentClass}">${p.toFixed(0)}%</span>`
+      }
+
+      let numInBag = function(shortName) {
+        return m_bag.reduce( (acc,val) => acc + (val === shortName), 0);
+      }
+      
       let init = function() {
-        let table = "<table><tr>\n";
+        let output = "<table border=1><tr>\n";
         Object.values(m_tokens).forEach(token => {
-          table += "<td>" + imageForToken(token, 64) + "</td>\n";
+          output += `<td>${imageForToken(token, 64)}</td>\n`;
         });
-        table += "</tr><tr>\n";
+        output += "</tr><tr>\n";
         Object.values(m_tokens).forEach(token => {
-          table += "<td>\n";
-          table += "<input type=\"button\" value=\"Add\" onclick=\"ChaosBag.addToken('" + token.shortName + "')\"><br>\n";
-          table += "<input type=\"button\" value=\"Remove\" onclick=\"ChaosBag.removeToken('" + token.shortName + "')\"><br>\n";
-          table += "<input type=\"number\" id=\"" + token.id + "-mod\" style=\"width: 2.5em\" value=\"" + token.mod + "\" min=\"-9\" max=\"+9\" onchange=\"ChaosBag.refresh()\"><label for=\"" + token.id + "-mod\"/>Mod</label>\n";
-          table += "</td>\n";
+          output += "<td>\n";
+          output += `<input type="button" value="Add" onclick="ChaosBag.addToken('${token.shortName}')"><br>\n`;
+          output += `<input type="button" value="Remove" onclick="ChaosBag.removeToken('${token.shortName}')"><br>\n`;
+          output += `<input type="number" id="${token.id}-mod" style="width: 2.5em" value="${token.mod}" min="-9" max="+9" onchange="ChaosBag.refresh()"><label for="${token.id}-mod"/>Mod</label>\n`;
+          output += "</td>\n";
         });
-        table += "</tr><table>";
-        document.querySelector("#tokenUI").innerHTML = table;
+        output += "</tr><table>";
+        document.querySelector("#tokenUI").innerHTML = output;
       }
       
       let refresh = function() {
         // Update token modifiers
         Object.values(m_tokens).forEach(t => {
-          let inputElem = document.getElementById(t.id + "-mod");
+          let inputElem = document.getElementById(`${t.id}-mod`);
           if (inputElem != null) {
             t.mod = parseInt(inputElem.value);
           }
         });
+        if (m_bag.length == 0)
+          return; // nothing to display
+        
         // Build modifier -> tokens lookup, with each bucket sorted by token
         let tokensByValue = {};
         m_bag.forEach(token => {
@@ -125,39 +147,64 @@
           if (l > r) return 1;
           return 0;
         }).reverse();
-        let table = "<table border=2>\n"
+        let output = "<table border=2>\n"
         // headers
         let columns = ["Mod", "==", ">=", "<=", "Tokens"];
-        table += "<tr>\n";
-        columns.forEach(c => table += "<th>"+c+"</th>\n");
-        table += "</tr>\n";
+        output += "<tr>\n";
+        columns.forEach(c => output += `<th>${c}</th>\n`);
+        output += "</tr>\n";
         // rows
         let aboveCount = 0;
         let totalCount = m_bag.length;
         uniqueMods.forEach(m => {
-          table += "<tr>\n";
+          output += "<tr>\n";
           // Mod
-          table += "<td>" + (m>0 ? "+" : "") + m + "</td>\n";
+          output += `<td>${m>0 ? "+" : ""}${m}</td>\n`;
           // ==
           let bucketCount = tokensByValue[m].length;
           let equalPercent = 100.0 * bucketCount / totalCount;
-          table += "<td>" + equalPercent.toFixed(0) + "%</td>\n";
+          output += `<td>${asPercent(equalPercent)}</td>\n`;
           // >=
-          let gteCount = 100.0 * (bucketCount + aboveCount) / totalCount;
-          table += "<td>" + gteCount.toFixed(0) + "%</td>\n";
+          let gtePercent = 100.0 * (bucketCount + aboveCount) / totalCount;
+          output += `<td>${asPercent(gtePercent)}</td>\n`;
           // <=
-          let lteCount = 100.0 * (totalCount - aboveCount) / totalCount;
-          table += "<td>" + lteCount.toFixed(0) + "%</td>\n";
+          let ltePercent = 100.0 * (totalCount - aboveCount) / totalCount;
+          output += `<td>${asPercent(ltePercent)}</td>\n`;
           aboveCount += bucketCount;
           // Tokens
-          table += "<td>";
-          tokensByValue[m].forEach(token => table += imageForToken(m_tokens[token],48));
-          table += "</td>\n";
+          output += "<td>";
+          tokensByValue[m].forEach(token => output += imageForToken(m_tokens[token],48));
+          output += "</td>\n";
           
-          table += "</tr>\n";
+          output += "</tr>\n";
         });
-        table += "</table>";
-        document.querySelector("#bagContents").innerHTML = table;
+        output += "</table>";
+
+        // Misc. odds
+        output += `<div style="font-size:120%">\n`;
+        // Odds of SK,CU,TA,EL for Ritual Candles, etc.
+        let badCount = numInBag("SK") + numInBag("CU") + numInBag("TA") + numInBag("EL");
+        let badPercent = 100.0 * badCount / totalCount;
+        output += `Odds of ${iconForTokenId("skull")},${iconForTokenId("cultist")},${iconForTokenId("tablet")},${iconForTokenId("elder-thing")}: ${asPercent(badPercent)}<br>\n`;
+        // Odds of SK,CU,TA,EL,WI for Mists of R'lyeh etc.
+        let reallyBadCount = badCount + numInBag("WI");
+        let reallyBadPercent = 100.0 * reallyBadCount / totalCount;
+        output += `Odds of ${iconForTokenId("skull")},${iconForTokenId("cultist")},${iconForTokenId("tablet")},${iconForTokenId("elder-thing")},${iconForTokenId("auto-fail")}: ${asPercent(reallyBadPercent)}<br>\n`;
+        // Odds of ES, +1, 0 for Clairvoyance, Azure Flame, etc.
+        let goodCount = numInBag("ES") + numInBag("+1") + numInBag("+0");
+        let goodPercent = 100.0 * goodCount / totalCount;
+        output += `Odds of ${iconForTokenId("elder-sign")},+1,0: ${asPercent(goodPercent)}<br>\n`;
+        // Even/odd/symbol odds for Prescient
+        let evenCount = numInBag("+0") + numInBag("-2") + numInBag("-4") + numInBag("-6") + numInBag("-8");
+        let oddCount = numInBag("+1") + numInBag("-1") + numInBag("-3") + numInBag("-5") + numInBag("-7");
+        let symbolCount = totalCount - (evenCount + oddCount);
+        let evenPercent = 100.0 * evenCount / totalCount;
+        let oddPercent = 100.0 * oddCount / totalCount;
+        let symbolPercent = 100.0 * symbolCount / totalCount;
+        output += `Even: ${asPercent(evenPercent)}, Odd: ${asPercent(oddPercent)}, Symbol: ${asPercent(symbolPercent)}<br>`;
+        output += "</div>\n";
+
+        document.querySelector("#bagContents").innerHTML = output;
       }
 
       return {
