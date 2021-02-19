@@ -67,10 +67,10 @@
 
       let m_tokens = {
         "ES":{ mod:+1, shortName: "ES", id:"elder-sign", name:"Elder Sign" },
-        "SK":{ mod:-2, shortName: "SK", id:"skull", name:"Skull" },
-        "TA":{ mod:-3, shortName: "TA", id:"tablet", name:"Tablet" },
-        "CU":{ mod:-1, shortName: "CU", id:"cultist", name:"Cultist" },
-        "EL":{ mod:-3, shortName: "EL", id:"elder-thing", name:"Elder Thing" },
+        "SK":{ mod:-2, drawAgain:false, shortName: "SK", id:"skull", name:"Skull" },
+        "TA":{ mod:-3, drawAgain:false, shortName: "TA", id:"tablet", name:"Tablet" },
+        "CU":{ mod:-1, drawAgain:false, shortName: "CU", id:"cultist", name:"Cultist" },
+        "EL":{ mod:-3, drawAgain:false, shortName: "EL", id:"elder-thing", name:"Elder Thing" },
         "+1":{ mod:+1, shortName: "+1", id:"plus1", name:"+1" },
         "+0":{ mod:+0, shortName: "+0", id:"zero", name:"0" },
         "-1":{ mod:-1, shortName: "-1", id:"minus1", name:"-1" },
@@ -110,10 +110,13 @@
         });
         output += "</tr><tr>\n";
         Object.values(m_tokens).forEach(token => {
-          output += "<td>\n";
+          output += `<td valign="top">\n`;
           output += `<input type="button" value="Add" onclick="ChaosBag.addToken('${token.shortName}')"><br>\n`;
           output += `<input type="button" value="Remove" onclick="ChaosBag.removeToken('${token.shortName}')"><br>\n`;
-          output += `<label for="${token.id}-mod"/>Mod:</label><input type="number" id="${token.id}-mod" style="width: 2.5em" value="${token.mod}" min="-9" max="+9" onchange="ChaosBag.refresh()">\n`;
+          output += `<label for="${token.id}-mod"/>Mod:</label><input type="number" id="${token.id}-mod" style="width: 2.5em" value="${token.mod}" min="-9" max="+9" onchange="ChaosBag.refresh()"}><br>\n`;
+          if (token.hasOwnProperty("drawAgain")) {
+            output += `<input type="checkbox" id="${token.id}-draw-again" title="If checked, this token has no modifier of its own; it requires you to draw another token." onclick="ChaosBag.refresh()"><label for="${token.id}-draw-again">NoMod</label>\n`;
+          }
           output += "</td>\n";
         });
         output += "</tr><table>";
@@ -121,11 +124,19 @@
       }
       
       let refresh = function() {
-        // Update token modifiers
+        // Update token modifier and drawAgain values based on inputs
         Object.values(m_tokens).forEach(t => {
-          let inputElem = document.getElementById(`${t.id}-mod`);
-          if (inputElem != null) {
-            t.mod = parseInt(inputElem.value);
+          let modElem = document.getElementById(`${t.id}-mod`);
+          if (modElem != null) {
+            t.mod = parseInt(modElem.value);
+          }
+          let drawAgainElem = document.getElementById(`${t.id}-draw-again`);
+          if (drawAgainElem != null) {
+            t.drawAgain = Boolean(drawAgainElem.checked);
+            // If DrawAgain is checked, disable the mod element as well
+            if (modElem != null) {
+              modElem.disabled = Boolean(drawAgainElem.checked);
+            }
           }
         });
         if (m_bag.length == 0) {
@@ -135,12 +146,20 @@
         
         // Build modifier -> tokens lookup, with each bucket sorted by token
         let tokensByValue = {};
+        const totalTokenCount = m_bag.length; // includes "draw again" tokens
+        let totalModTokenCount = 0; // excludes "draw again" tokens; used for "odds of getting +N or better" tests
+        let drawAgainTokens = [];
         m_bag.forEach(token => {
-          let mod = m_tokens[token].mod;
-          if (tokensByValue[mod] == null) {
-            tokensByValue[mod] = [token];
+          if (m_tokens[token].drawAgain) {
+            drawAgainTokens.push(token);
           } else {
-            tokensByValue[mod].push(token);
+            let mod = m_tokens[token].mod;
+            if (tokensByValue[mod] == null) {
+              tokensByValue[mod] = [token];
+            } else {
+              tokensByValue[mod].push(token);
+            }
+            totalModTokenCount += 1;
           }
         });
         Object.keys(tokensByValue).forEach(m => tokensByValue[m].sort());
@@ -151,26 +170,25 @@
         }).reverse();
         let output = "<table border=2>\n"
         // headers
-        let columns = ["Mod", "==", ">=", "<=", "Tokens"];
+        const columns = ["Mod", "==", ">=", "<=", "Tokens"];
         output += "<tr>\n";
         columns.forEach(c => output += `<th>${c}</th>\n`);
         output += "</tr>\n";
         // rows
         let aboveCount = 0;
-        let totalCount = m_bag.length;
         uniqueMods.forEach(m => {
           output += "<tr>\n";
           // Mod
           output += `<td>${m>0 ? "+" : ""}${m}</td>\n`;
           // ==
           let bucketCount = tokensByValue[m].length;
-          let equalPercent = 100.0 * bucketCount / totalCount;
+          let equalPercent = 100.0 * bucketCount / totalModTokenCount;
           output += `<td>${asPercent(equalPercent)}</td>\n`;
           // >=
-          let gtePercent = 100.0 * (bucketCount + aboveCount) / totalCount;
+          let gtePercent = 100.0 * (bucketCount + aboveCount) / totalModTokenCount;
           output += `<td>${asPercent(gtePercent)}</td>\n`;
           // <=
-          let ltePercent = 100.0 * (totalCount - aboveCount) / totalCount;
+          let ltePercent = 100.0 * (totalTokenCount - aboveCount) / totalModTokenCount;
           output += `<td>${asPercent(ltePercent)}</td>\n`;
           aboveCount += bucketCount;
           // Tokens
@@ -180,29 +198,48 @@
           
           output += "</tr>\n";
         });
+        if (drawAgainTokens.length > 0) {
+          output += "<tr>\n";
+          // Mod
+          output += `<td>N/A</td>\n`;
+          // ==
+          output += `<td></td>\n`;
+          // >=
+          output += `<td></td>\n`;
+          // <=
+          output += `<td></td>\n`;
+          // Tokens
+          output += "<td>";
+          drawAgainTokens.forEach(token => output += imageForToken(m_tokens[token],48));
+          output += "</td>\n";
+          
+          output += "</tr>\n";
+        }
         output += "</table>";
 
         // Misc. odds
         output += `<div style="font-size:120%">\n`;
+        // Total token count (as a sanity check)
+        output += `Bag contains ${totalTokenCount} tokens (${totalModTokenCount} with modifiers)<br>`;
         // Odds of SK,CU,TA,EL for Ritual Candles, etc.
         let badCount = numInBag("SK") + numInBag("CU") + numInBag("TA") + numInBag("EL");
-        let badPercent = 100.0 * badCount / totalCount;
+        let badPercent = 100.0 * badCount / totalTokenCount;
         output += `Odds of ${iconForTokenId("skull")},${iconForTokenId("cultist")},${iconForTokenId("tablet")},${iconForTokenId("elder-thing")}: ${asPercent(badPercent)}<br>\n`;
         // Odds of SK,CU,TA,EL,WI for Mists of R'lyeh etc.
         let reallyBadCount = badCount + numInBag("WI");
-        let reallyBadPercent = 100.0 * reallyBadCount / totalCount;
+        let reallyBadPercent = 100.0 * reallyBadCount / totalTokenCount;
         output += `Odds of ${iconForTokenId("skull")},${iconForTokenId("cultist")},${iconForTokenId("tablet")},${iconForTokenId("elder-thing")},${iconForTokenId("auto-fail")}: ${asPercent(reallyBadPercent)}<br>\n`;
         // Odds of ES, +1, 0 for Clairvoyance, Azure Flame, etc.
         let goodCount = numInBag("ES") + numInBag("+1") + numInBag("+0");
-        let goodPercent = 100.0 * goodCount / totalCount;
+        let goodPercent = 100.0 * goodCount / totalTokenCount;
         output += `Odds of ${iconForTokenId("elder-sign")},+1,0: ${asPercent(goodPercent)}<br>\n`;
         // Even/odd/symbol odds for Prescient
         let evenCount = numInBag("+0") + numInBag("-2") + numInBag("-4") + numInBag("-6") + numInBag("-8");
         let oddCount = numInBag("+1") + numInBag("-1") + numInBag("-3") + numInBag("-5") + numInBag("-7");
-        let symbolCount = totalCount - (evenCount + oddCount);
-        let evenPercent = 100.0 * evenCount / totalCount;
-        let oddPercent = 100.0 * oddCount / totalCount;
-        let symbolPercent = 100.0 * symbolCount / totalCount;
+        let symbolCount = totalTokenCount - (evenCount + oddCount);
+        let evenPercent = 100.0 * evenCount / totalTokenCount;
+        let oddPercent = 100.0 * oddCount / totalTokenCount;
+        let symbolPercent = 100.0 * symbolCount / totalTokenCount;
         output += `Even: ${asPercent(evenPercent)}, Odd: ${asPercent(oddPercent)}, Symbol: ${asPercent(symbolPercent)}<br>`;
         output += "</div>\n";
 
