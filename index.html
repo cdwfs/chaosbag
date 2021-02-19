@@ -188,7 +188,7 @@
           let gtePercent = 100.0 * (bucketCount + aboveCount) / totalModTokenCount;
           output += `<td>${asPercent(gtePercent)}</td>\n`;
           // <=
-          let ltePercent = 100.0 * (totalTokenCount - aboveCount) / totalModTokenCount;
+          let ltePercent = 100.0 * (totalModTokenCount - aboveCount) / totalModTokenCount;
           output += `<td>${asPercent(ltePercent)}</td>\n`;
           aboveCount += bucketCount;
           // Tokens
